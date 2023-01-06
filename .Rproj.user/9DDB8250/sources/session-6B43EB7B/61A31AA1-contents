@@ -1,0 +1,170 @@
+---
+title: "Penguins Analysis"
+author: "Glen Roarke"
+date: "2022-11-28"
+output: html_document
+---
+
+# Packages installed
+Install if not already on your system.
+```{r install, eval=FALSE}
+install.packages("palmerpenguins")
+install.packages("ggplot2")
+install.packages("rstatix")
+install.packages("tidyverse")
+```
+
+# Load packages 
+Load the packages and the penguin data used for analysis.
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(palmerpenguins)
+data(package = 'palmerpenguins')
+
+library("dplyr")
+library("ggplot2")
+library("rstatix")
+library("ggpubr")
+library("knitr")
+library("performance")
+library("interactions")
+library("jtools")
+library('fitdistrplus')
+
+
+```
+
+# Questions
+Calculate whether there are any significant differences in bill depth between species, whilst accounting for any other affects that might influence bill depth.
+
+# Hypothesis 
+There will be differences between species and bill depth according to the body weight and sex"  
+
+* The response variables (dependent) is bill_depth_mm
+* The predictor variables (independent) examined are sex, species and body weights.
+
+# Data Structure
+Overview of the columns in the data and data types.
+
+```{r data structure }
+
+knitr::kable(head(penguins))
+
+str(penguins)
+
+#group by species to see what species are there
+knitr::kable(penguins %>% group_by(species) %>% count(species))
+
+```
+
+# Data Transformation
+We have not made any transformations to this data set. Nothing has been removed and outlier remain.
+
+# Data Visualisation
+
+## Histogram 
+Checking if flipper length is normal distributed for the three species.
+
+``` {r histogram}
+
+# Bill depth by species.
+#Histogram checking for a normal distribution
+histo <- ggplot(data = penguins, aes(x=bill_depth_mm, fill =species))
+
+histo + 
+  geom_histogram(position = 'identity', bins = 30) +
+  theme_classic() +
+  facet_grid(~ species)
+```
+
+## qqplot
+
+Futher confirmation of a normal distrubution in this dataset
+
+``` {r qqplot}
+ggqqplot(penguins, x = "bill_depth_mm", color = "species")
+
+```
+
+## Boxplot 
+This visualisation displays any difference in mean flipper length between the two species.
+
+```{r boxplot }
+
+#### Boxplot ###
+billdepth_boxp <- ggplot(data = penguins, aes(x = species, y = bill_depth_mm, col = species))
+#boxplot
+billdepth_boxp + geom_boxplot()
+
+```
+This visualisation shows that there is a difference in mean flipper length between the species.
+
+# Creating GLM models
+
+## Base R
+
+``` {r}
+
+#cross of predictors species and sex
+# I need to try and add in both body_mass and sex as predictor variables
+glm_norm_sex <- glm(bill_depth_mm ~ species * sex, data = penguins, family = "gaussian")
+
+glm_norm_bw <- glm(bill_depth_mm ~ species * body_mass_g, data = penguins, family = "gaussian")
+
+
+```
+
+``` {r sex model}
+# glm of sex
+
+par(mfrow=c(2,2)) # Change the panel layout to 2 x 2
+plot(glm_norm_sex)
+par(mfrow=c(1,1)) # Change back to 1 x 1
+```
+
+``` {r species model}
+
+# glm of body weight and sex
+
+par(mfrow=c(2,2)) # Change the panel layout to 2 x 2
+plot(glm_norm_bw)
+par(mfrow=c(1,1)) # Change back to 1 x 1
+
+```
+
+We can see here that the model including the sex variable fits better.
+Let visualise the sex model better through the performance package.
+
+``` {r species sex performace}
+
+check_model(glm_norm_sex)
+
+```
+
+# Interactions 
+
+```{r}
+plot_summs(glm_norm_sex, plot.distributions = TRUE, inner_ci_level = .9)
+
+```
+
+
+``` {r}
+# compare species and sex models
+plot_summs(glm_norm_sex,glm_norm_bw, 
+           model.names = c("Species & Sex", "Species & Body weight")
+           ,inner_ci_level = .9
+           , rescale.distributions = TRUE
+           )
+
+```
+
+# Compare interaction between bill depth and sex.
+
+``` {r cat plot}
+# Plot the interactions
+# sex and species are both categorical variables
+cat_plot(glm_norm_sex,
+              pred = species,
+              modx = sex)
+```
