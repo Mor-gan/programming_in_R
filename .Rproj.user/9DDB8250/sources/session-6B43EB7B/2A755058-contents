@@ -1,0 +1,57 @@
+---
+title: "NAO_MASS"
+output: html_document
+date: "2023-01-06"
+---
+
+## R Markdown
+
+## Packages to install
+library(tidyverse)
+library(vroom)
+library("dplyr")
+library('fitdistrplus')
+library(ggplot2)
+library("performance")
+library(digest)
+
+#filter out negative value in first data set
+new_mass <- NAO_kv22535.tsv %>%
+  group_by(year, month, NAO) %>% 
+  filter(NAO > 1)
+View(new_mass)
+
+#filter out negative value in second data set
+mass_data <- mass_kv22535.tsv %>%
+  filter(weight > 1 )
+View(mass_data)
+
+#merge the two data set
+nao_mass_data <- merge(mass_data,unique(new_mass),by=c("year"))
+nao_mass_data
+
+#filter by ID
+new_mass_data <- nao_mass_data %>%  
+  group_by( ID,site, month, age, sex, weight, NAO) %>% 
+  summarise(year = (unique(year)))
+new_mass_data
+
+#visualize the dataset for weight
+dev.new()
+plot(fitdist(new_mass_data$weight,"norm"))
+
+#visualize the dataset for NAO
+dev.new()
+plot(fitdist(new_mass_data$NAO,"norm"))
+
+#ggplot
+ggplot(data = new_mass_data, aes(x = weight, y = year))+ 
+  geom_boxplot() 
+mod3 <- glm(ID ~ year + weight + year:weight,
+            data = new_mass_data,
+            family = "gaussian")
+
+summary(mod3)
+plot(mod3)
+check_model(mod3)
+ 
